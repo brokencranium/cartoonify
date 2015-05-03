@@ -7,6 +7,8 @@ import java.io.IOException;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
+import org.opencv.core.Scalar;
+import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.videoio.VideoCapture;
@@ -21,7 +23,7 @@ public class Cartoonify {
 	private static int LAPLACIAN_FILTER_SIZE = 5;
 	private static int EDGES_THRESHOLD = 75;
 
-	public void run() throws IOException, InterruptedException {
+	public void run(char inp) throws IOException, InterruptedException {
 		camera = new VideoCapture(0);
 
 		camera.open(cameraNumber);
@@ -32,20 +34,22 @@ public class Cartoonify {
 		camera.set(CV_CAP_PROP_FRAME_WIDTH, 640);
 		camera.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
 		Mat cameraFrame = new Mat();
-		int i = 0;
 //		Mat displayedFrame;
 			camera.read(cameraFrame);
-         
-	    Mat cartoon = this.cartoonify(cameraFrame);		
+	   Mat cartoon = null;
+       if (inp == 'B')  
+	     cartoon = this.cartoonifyBW(cameraFrame);
+       else if (inp == 'C')
+    	 cartoon = this.cartoonifyClr(cameraFrame);  
+    	   
 		String filename = "cartoonify.png";
 		Imgcodecs.imwrite(filename, cartoon);
 		Desktop desktop = Desktop.getDesktop();
 	    File file = new File(filename);
 	    desktop.open(file);
-
 	}
-
-	public Mat cartoonify(Mat src){
+   
+	public Mat cartoonifyBW(Mat src){
 	Mat gray = new Mat();	
 	Mat sharp = new Mat();		
 	Mat edges = new Mat();
@@ -63,10 +67,52 @@ public class Cartoonify {
 	return mask;	
 	}
 	
+	public Mat cartoonifyClr(Mat src){
+		Size size = src.size();
+		Size smallSize = new Size();
+		smallSize.width = size.width/2;
+		smallSize.height = size.height/2;
+		Mat smallImg = new Mat(smallSize,CvType.CV_8UC3);
+		Imgproc.resize(src, smallImg, smallSize,0,0,Imgproc.INTER_LINEAR);
+		Mat tmp = new Mat(smallSize, CvType.CV_8UC3);
+		int repitions = 7; // Repetitions for cartoon affect 
+		
+		for(int i = 0; i< repitions; ++i){
+			int ksize = 9; //Filter size 
+			double sigmaColor = 9; //Filter color strength 
+			double sigmaSpace = 7; //Spatial strength
+			Imgproc.bilateralFilter(smallImg, tmp, ksize, sigmaColor, sigmaSpace);
+			Imgproc.bilateralFilter(tmp, smallImg, ksize, sigmaColor, sigmaSpace);
+		}
+		
+		Mat bigImg = new Mat();
+		Imgproc.resize(smallImg, bigImg, size,0,0,Imgproc.INTER_LINEAR);
+		Mat dest = new Mat(size,CvType.CV_8UC3);
+		dest.setTo(new Scalar(0));
+		
+		Mat sharp = new Mat();	
+		Mat edges = new Mat();
+		Mat mask = new Mat();
+
+		// Remove noise by keeping the edges sharp
+		  Imgproc.medianBlur(bigImg, sharp, MEDIAN_BLUR_FILTER_SIZE);		
+	   //  Produce edges similar to hand sketches
+		  Imgproc.Laplacian(sharp, edges,CvType.CV_8U,LAPLACIAN_FILTER_SIZE, 0.50, 1);
+		//  Imgproc.Laplacian(src, dst, ddepth, ksize, scale, delta, borderType);
+		//  Make edges either black or white
+		  Imgproc.threshold(edges, mask, EDGES_THRESHOLD, 255,Imgproc.THRESH_BINARY_INV );
+		
+		
+		bigImg.copyTo(dest,mask);
+	
+		return dest;
+	}
+	
+	
 	public static void main(String[] args) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		try {
-			new Cartoonify().run();
+			new Cartoonify().run('C');
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
