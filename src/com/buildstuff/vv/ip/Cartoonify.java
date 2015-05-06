@@ -4,6 +4,9 @@ import java.awt.Desktop;
 import java.io.File;
 import java.io.IOException;
 
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
@@ -24,6 +27,8 @@ public class Cartoonify {
 	private static int EDGES_THRESHOLD = 75;
 
 	public void run(char inp) throws IOException, InterruptedException {
+	   
+		
 		camera = new VideoCapture(0);
 
 		camera.open(cameraNumber);
@@ -112,7 +117,7 @@ public class Cartoonify {
 	public static void main(String[] args) {
 		System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 		try {
-			new Cartoonify().run('C');
+			new Cartoonify().run('B');
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
